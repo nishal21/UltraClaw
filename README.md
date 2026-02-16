@@ -29,23 +29,23 @@ graph TD
         Router -->|System Actions| Skills[Skill Registry]
         
         subgraph "Inference Engine"
-            Cloud[Cloud LLM (GPT-4o)]
-            Local[Local LLM (Llama 3)]
+            Cloud["Cloud LLM (GPT-4o)"]
+            Local["Local LLM (Llama 3)"]
             Cloud -.->|Failover| Local
         end
         
         subgraph "Media Engine"
-            DALL[DALL-E 3]
-            Stable[Stability AI]
-            Runway[Runway ML]
-            Veo[Google Veo]
+            DALL["DALL-E 3"]
+            Stable["Stability AI"]
+            Runway["Runway ML"]
+            Veo["Google Veo"]
         end
         
         subgraph "Skills"
-            FS[File System]
-            Cmd[Command Exec]
-            Browser[Web Browser]
-            MCP[MCP Tools]
+            FS["File System"]
+            Cmd["Command Exec"]
+            Browser["Web Browser"]
+            MCP["MCP Tools"]
         end
     end
 ```
@@ -175,7 +175,7 @@ Ultraclaw supports **15+ generation providers**. It automatically routes request
 
 ```mermaid
 graph LR
-    Input[Prompt: "A cat in space"] --> Router{Media Router}
+    Input["Prompt: 'A cat in space'"] --> Router{Media Router}
     
     subgraph "Image Providers"
         Router -->|Prefer: DALL-E| OpenAI[OpenAI DALL-E 3]
