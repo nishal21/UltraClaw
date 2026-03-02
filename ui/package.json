@@ -33,7 +33,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
     "@tauri-apps/api": "^2.0.1",
-    "@tauri-apps/cli": "^2.0.0-rc.18",
+    "@tauri-apps/cli": "^1.6.0",
     "@vitest/browser-playwright": "4.0.18",
     "playwright": "^1.58.2",
     "vitest": "4.0.18"
