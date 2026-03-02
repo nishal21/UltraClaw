@@ -6,7 +6,7 @@
   **The Ultimate Autonomous AI Agent Framework**
 
   <p>
-    <a href="https://nishal21.github.io/Ultraclaw/"><img src="https://img.shields.io/badge/Official_Website-Ultraclaw.io-00f0ff?style=for-the-badge&logo=vercel&logoColor=black" alt="Website" /></a>
+    <a href="https://nishal21.github.io/Ultraclaw/"><img src="https://img.shields.io/badge/Official_Website-00f0ff?style=for-the-badge&logo=vercel&logoColor=black" alt="Website" /></a>
     <a href="https://github.com/nishal21/Ultraclaw/actions"><img src="https://img.shields.io/badge/build-passing-success?style=for-the-badge&logo=githubactions" alt="Build Status" /></a>
     <a href="https://github.com/nishal21/Ultraclaw/releases/latest"><img src="https://img.shields.io/badge/version-v1.0.0-blue?style=for-the-badge&logo=github" alt="Version" /></a>
     <img src="https://img.shields.io/badge/rust-stable-orange?style=for-the-badge&logo=rust" alt="Rust Version" />
