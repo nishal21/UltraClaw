@@ -8,3 +8,5 @@ config.json
 ultraclaw.db
 ultraclaw.db.memory
 media_output/
+.agent/
+

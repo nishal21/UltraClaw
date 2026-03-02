@@ -16,7 +16,7 @@
 name = "ultraclaw"
 version = "0.1.0"
 edition = "2021"
-description = "Hyper-optimized autonomous AI agent: 15+ network bridge, dual-model failover"
+description = "Hyper-optimized autonomous AI agent: unified multimodal failover"
 
 # ============================================================================
 # DEPENDENCIES — each chosen for minimal footprint
@@ -26,20 +26,14 @@ description = "Hyper-optimized autonomous AI agent: 15+ network bridge, dual-mod
 # --- Async Runtime ---
 # Only enable the multi-threaded runtime and macros. Omitting "io-util",
 # "io-std", "signal", etc. saves ~200KB of compiled code.
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "process"] }
-
-# --- Matrix Chat Layer ---
-# The single SDK that replaces native WhatsApp/Telegram/Discord/Slack/iMessage
-# SDKs. By routing everything through Matrix bridges, we avoid linking 15+
-# platform SDKs (each 10-50MB). This alone saves 200-500MB of RAM.
-# Using rustls instead of native-tls to avoid OpenSSL dependency.
-matrix-sdk = { version = "0.7", features = ["rustls-tls"], default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "process", "signal"] }
+anyhow = "1"
+async-trait = "0.1"
 
 # --- HTTP Client (for Cloud LLM APIs) ---
-# Shared with matrix-sdk's internal HTTP stack when possible.
 # rustls-tls avoids linking OpenSSL. "json" enables serde integration.
 # "stream" enables streaming responses for token-by-token output.
-reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream", "multipart"], default-features = false }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream", "multipart", "blocking"], default-features = false }
 
 # --- Local LLM Inference (OPTIONAL) ---
 # Bindings to llama.cpp. Requires cmake to build from source.
@@ -76,6 +70,7 @@ dotenvy = "0.15"
 # --- Utilities ---
 uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde", "clock"], default-features = false }
+urlencoding = "2.1"
 # CLI Wizard for onboarding
 dialoguer = "0.11"
 
@@ -85,14 +80,32 @@ dialoguer = "0.11"
 # Tiny crate (~30KB compiled), no-std compatible.
 base64 = "0.22"
 
-# MIME type parsing for media file uploads (image/png, video/mp4, etc.).
-# Required by matrix-sdk's send_attachment API.
+# MIME type parsing for media file uploads.
 mime = "0.3"
+
+# --- Connectors (Phase 11: Native Apps) ---
+# Discord API Wrapper (Gateway + REST)
+# "rustls_backend" avoids OpenSSL. "client" + "gateway" for bot functionality.
+serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model"], optional = true }
+
+# Telegram Key Value Store (Bot API)
+teloxide = { version = "0.12", default-features = false, features = ["macros", "rustls", "ctrlc_handler"], optional = true }
+
+# --- Webhook Server (Phase 12) ---
+# High-performance HTTP server for generic webhooks (Slack, Google Chat, etc.)
+axum = { version = "0.7", default-features = false, features = ["http1", "json", "tokio"] }
+rand = "0.10.0"
+crossterm = "0.29.0"
+ratatui = "0.30.0"
+tower-http = { version = "0.6.8", features = ["cors"] }
 
 [features]
 default = []
 # Enable local LLM inference via llama.cpp (requires cmake + C++ compiler)
 local-llm = ["llama_cpp"]
+# Native App Connectors
+discord = ["serenity"]
+telegram = ["teloxide"]
 
 # ============================================================================
 # PROFILE OPTIMIZATIONS
@@ -136,8 +149,8 @@ depends = "$auto"
 section = "net"
 priority = "optional"
 extended-description = """\
-Ultraclaw is a hyper-optimized autonomous AI agent that bridges \
-multiple communication platforms via Matrix. It routes inference \
+Ultraclaw is a hyper-optimized autonomous AI agent that supports \
+multiple communication platforms natively. It routes inference \
 to cloud and local LLMs with automatic failover, and supports \
 image/video generation via 8 cloud providers."""
 assets = [
@@ -152,6 +165,6 @@ identifier = "com.ultraclaw.agent"
 category = "public.app-category.utilities"
 short_description = "Hyper-optimized autonomous AI agent"
 long_description = """\
-Ultraclaw is an autonomous AI agent that bridges communication \
-platforms via Matrix with cloud/local LLM failover and multimodal \
+Ultraclaw is an autonomous AI agent that connects to communication \
+platforms natively with cloud/local LLM failover and multimodal \
 media generation."""

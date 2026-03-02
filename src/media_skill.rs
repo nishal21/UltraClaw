@@ -12,12 +12,12 @@
 // The skills hold an Arc<MediaEngine> reference. When invoked, they:
 // 1. Parse the LLM's arguments into ImageParams/VideoParams
 // 2. Call the MediaEngine to generate the media
-// 3. Return the file path + metadata so matrix.rs can upload the file
+// 3. Return the file path + metadata so the connector can upload the file
 //
 // MEMORY OPTIMIZATION:
 // - Skills are zero-size structs holding only an Arc pointer (8 bytes each).
 // - Generated media is saved directly to disk — never fully buffered in RAM.
-// - The skill output includes the file path for matrix.rs to stream-upload.
+// - The skill output includes the file path for the active connector to stream-upload.
 // ============================================================================
 
 use crate::media::{ImageParams, MediaEngine, MediaProvider, VideoParams};

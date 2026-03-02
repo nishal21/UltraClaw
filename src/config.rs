@@ -94,6 +94,18 @@ pub struct Config {
     pub media_image_provider: String,
     #[serde(default = "default_video_provider")]
     pub media_video_provider: String,
+
+    // --- Connectors (Phase 11 & 12) ---
+    // Webhook Settings
+    #[serde(default = "default_webhook_port")]
+    pub webhook_port: u16,
+    pub slack_signing_secret: Option<String>,
+    pub mattermost_token: Option<String>,
+    
+    #[serde(default)]
+    pub discord_token: Option<String>,
+    #[serde(default)]
+    pub telegram_token: Option<String>,
 }
 
 // Defaults for Serde
@@ -108,6 +120,7 @@ fn default_context_window() -> usize { 20 }
 fn default_media_output_dir() -> String { "media_output".to_string() }
 fn default_image_provider() -> String { "openai".to_string() }
 fn default_video_provider() -> String { "veo".to_string() }
+fn default_webhook_port() -> u16 { 3000 }
 
 impl Default for Config {
     fn default() -> Self {
@@ -142,6 +155,14 @@ impl Default for Config {
             media_output_dir: default_media_output_dir(),
             media_image_provider: default_image_provider(),
             media_video_provider: default_video_provider(),
+            discord_token: env::var("ULTRACLAW_DISCORD_TOKEN").ok(),
+            telegram_token: env::var("ULTRACLAW_TELEGRAM_TOKEN").ok(),
+            webhook_port: env::var("ULTRACLAW_WEBHOOK_PORT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(3000),
+            slack_signing_secret: env::var("ULTRACLAW_SLACK_SECRET").ok(),
+            mattermost_token: env::var("ULTRACLAW_MATTERMOST_TOKEN").ok(),
         }
     }
 }
@@ -173,7 +194,13 @@ impl Config {
         if let Ok(val) = env::var("ULTRACLAW_CLOUD_API_KEY") { config.cloud_api_key = val; }
         if let Ok(val) = env::var("ULTRACLAW_CLOUD_MODEL") { config.cloud_model = val; }
         if let Ok(val) = env::var("ULTRACLAW_CLOUD_BASE_URL") { config.cloud_base_url = val; }
-        // ... (can add others if strict env override needed, but usually these are enough)
+        if let Ok(val) = env::var("ULTRACLAW_CLOUD_BASE_URL") { config.cloud_base_url = val; }
+        // Connectors
+        if let Ok(val) = env::var("ULTRACLAW_DISCORD_TOKEN") { config.discord_token = Some(val); }
+        if let Ok(val) = env::var("ULTRACLAW_TELEGRAM_TOKEN") { config.telegram_token = Some(val); }
+        if let Ok(val) = env::var("ULTRACLAW_WEBHOOK_PORT") { config.webhook_port = val.parse().unwrap_or(3000); }
+        if let Ok(val) = env::var("ULTRACLAW_SLACK_SECRET") { config.slack_signing_secret = Some(val); }
+        if let Ok(val) = env::var("ULTRACLAW_MATTERMOST_TOKEN") { config.mattermost_token = Some(val); }
 
         Ok(config)
     }

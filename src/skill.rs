@@ -32,7 +32,7 @@ use std::collections::HashMap;
 /// Maximum output bytes from any single skill execution.
 /// 4KB is enough for useful output while preventing RAM spikes.
 /// A `cat` on a 1GB file would be truncated to 4KB.
-const MAX_OUTPUT_BYTES: usize = 4096;
+pub const MAX_OUTPUT_BYTES: usize = 4096;
 
 /// Timeout for command execution. After this, the child process is killed.
 /// Prevents runaway scripts from consuming CPU and battery indefinitely.
@@ -206,86 +206,7 @@ impl Skill for ListDirSkill {
     }
 }
 
-/// Execute a shell command.
-///
-/// SAFETY:
-/// - Output is capped at MAX_OUTPUT_BYTES.
-/// - Commands are killed after COMMAND_TIMEOUT_SECS.
-/// - Destructive commands require explicit user confirmation (enforced by Soul directives).
-pub struct RunCommandSkill;
-
-impl Skill for RunCommandSkill {
-    fn name(&self) -> &'static str {
-        "run_command"
-    }
-
-    fn description(&self) -> &'static str {
-        "Execute a shell command and return its output. Timeout: 10 seconds. Output capped at 4KB."
-    }
-
-    fn schema(&self) -> Value {
-        serde_json::json!({
-            "type": "object",
-            "properties": {
-                "command": {
-                    "type": "string",
-                    "description": "The shell command to execute"
-                }
-            },
-            "required": ["command"]
-        })
-    }
-
-    fn execute_sync(&self, args: &Value) -> SkillOutput {
-        let command_str = args.get("command").and_then(|v| v.as_str()).unwrap_or("");
-
-        // Use a blocking runtime to execute with timeout.
-        // In production, this is called via SkillRegistry::execute_async().
-        let rt = tokio::runtime::Handle::try_current();
-        if rt.is_err() {
-            return SkillOutput {
-                name: "run_command".to_string(),
-                output: "Error: no tokio runtime available".to_string(),
-                is_error: true,
-            };
-        }
-
-        // For synchronous fallback, run without timeout
-        let output = std::process::Command::new("sh")
-            .args(["-c", command_str])
-            .output();
-
-        match output {
-            Ok(out) => {
-                let stdout = String::from_utf8_lossy(&out.stdout);
-                let stderr = String::from_utf8_lossy(&out.stderr);
-                let combined = if stderr.is_empty() {
-                    stdout.to_string()
-                } else {
-                    format!("STDOUT:\n{}\nSTDERR:\n{}", stdout, stderr)
-                };
-
-                // Truncate
-                let truncated = if combined.len() > MAX_OUTPUT_BYTES {
-                    format!("{}...\n[TRUNCATED]", &combined[..MAX_OUTPUT_BYTES])
-                } else {
-                    combined
-                };
-
-                SkillOutput {
-                    name: "run_command".to_string(),
-                    output: truncated,
-                    is_error: !out.status.success(),
-                }
-            }
-            Err(e) => SkillOutput {
-                name: "run_command".to_string(),
-                output: format!("Error executing command: {}", e),
-                is_error: true,
-            },
-        }
-    }
-}
+// The old RunCommandSkill has been replaced by SandboxCommandSkill in sandbox_skill.rs
 
 // ============================================================================
 // SKILL REGISTRY
@@ -308,7 +229,10 @@ impl SkillRegistry {
         let builtins: Vec<Box<dyn Skill>> = vec![
             Box::new(ReadFileSkill),
             Box::new(ListDirSkill),
-            Box::new(RunCommandSkill),
+            Box::new(crate::sandbox_skill::SandboxCommandSkill),
+            Box::new(crate::search_skill::SearchSkill),
+            Box::new(crate::swarm_skill::SwarmSkill),
+            Box::new(crate::cron_skill::CronSkill),
         ];
         for skill in builtins {
             skills.insert(skill.name(), skill);

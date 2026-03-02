@@ -4,13 +4,13 @@
 // Short-term conversational context storage — per-room message history.
 //
 // ARCHITECTURE:
-// This is the agent's "short-term memory" (working memory). Each Matrix
-// room_id gets an isolated conversation timeline. When the LLM needs
+// This is the agent's "short-term memory" (working memory). Each Chat
+// thread gets an isolated conversation timeline. When the LLM needs
 // context for a response, we pull the last N messages from this database.
 //
 // WHY SQLITE INSTEAD OF IN-MEMORY VECS?
-// - A Vec<String> per room would grow unboundedly as conversations continue.
-//   With 100 rooms × 1000 messages × 500 bytes each = 50MB of RAM just for
+// - A Vec<String> per chat would grow unboundedly as conversations continue.
+//   With 100 chats × 1000 messages × 500 bytes each = 50MB of RAM just for
 //   conversation history. That's unacceptable on a Raspberry Pi or phone.
 // - SQLite stores everything on disk. The page cache is capped at 2MB.
 //   We only load the last `context_window_size` messages into RAM when needed.
@@ -18,7 +18,7 @@
 //   integrity for free. A Vec would lose all history on crash.
 //
 // ENERGY OPTIMIZATION:
-// - Index on `room_id` makes context retrieval O(log N) via B-tree.
+// - Index on `chat_id` makes context retrieval O(log N) via B-tree.
 // - WAL mode uses sequential I/O (append-only log), which is 10-100x
 //   faster than random writes on flash storage (SSDs, SD cards, eMMC).
 // - Prepared statements are cached by SQLite, avoiding repeated SQL parsing.
@@ -80,69 +80,69 @@ impl ConversationDb {
         conn.execute_batch("PRAGMA synchronous=NORMAL;")
             .map_err(|e| format!("Synchronous mode failed: {}", e))?;
 
-        // Create the conversations table with an index on room_id.
+        // Create the conversations table with an index on chat_id.
         // The rowid is the implicit primary key (auto-incrementing integer),
         // which is used for ordering messages chronologically.
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS conversations (
-                room_id TEXT NOT NULL,
+                chat_id TEXT NOT NULL,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 timestamp INTEGER NOT NULL
             );
-            CREATE INDEX IF NOT EXISTS idx_conv_room ON conversations(room_id, timestamp);",
+            CREATE INDEX IF NOT EXISTS idx_conv_chat ON conversations(chat_id, timestamp);",
         )
         .map_err(|e| format!("Schema creation failed: {}", e))?;
 
         Ok(Self { conn })
     }
 
-    /// Append a message to a room's conversation history.
+    /// Append a message to a chat's conversation history.
     ///
     /// This is O(1) amortized — SQLite appends to the WAL file sequentially.
     /// No existing pages are modified until the next checkpoint.
     pub fn append_message(
         &self,
-        room_id: &str,
+        chat_id: &str,
         role: &str,
         content: &str,
     ) -> Result<(), String> {
         let timestamp = chrono::Utc::now().timestamp();
         self.conn
             .execute(
-                "INSERT INTO conversations (room_id, role, content, timestamp)
+                "INSERT INTO conversations (chat_id, role, content, timestamp)
                  VALUES (?1, ?2, ?3, ?4)",
-                params![room_id, role, content, timestamp],
+                params![chat_id, role, content, timestamp],
             )
             .map_err(|e| format!("Insert failed: {}", e))?;
         Ok(())
     }
 
-    /// Retrieve the last N messages for a room.
+    /// Retrieve the last N messages for a chat.
     ///
     /// # Memory Usage
     /// Returns at most `limit` messages. With limit=20 and ~300 bytes/message,
     /// this allocates ~6KB of heap memory — trivial.
     ///
-    /// The query uses the (room_id, timestamp) index, so even with millions
+    /// The query uses the (chat_id, timestamp) index, so even with millions
     /// of total messages, retrieval is O(log N + limit).
     pub fn get_context(
         &self,
-        room_id: &str,
+        chat_id: &str,
         limit: usize,
     ) -> Result<Vec<ChatMessage>, String> {
         let mut stmt = self
             .conn
             .prepare(
                 "SELECT role, content FROM conversations
-                 WHERE room_id = ?1
+                 WHERE chat_id = ?1
                  ORDER BY timestamp DESC
                  LIMIT ?2",
             )
             .map_err(|e| format!("Prepare failed: {}", e))?;
 
         let messages: Vec<ChatMessage> = stmt
-            .query_map(params![room_id, limit as i64], |row| {
+            .query_map(params![chat_id, limit as i64], |row| {
                 Ok(ChatMessage {
                     role: row.get(0)?,
                     content: row.get(1)?,
@@ -159,22 +159,22 @@ impl ConversationDb {
         Ok(messages)
     }
 
-    /// Clear all conversation history for a room.
+    /// Clear all conversation history for a chat.
     ///
     /// Used when a user explicitly asks to reset context or when
-    /// the room is detected as a new conversation.
+    /// the chat is detected as a new conversation.
     #[allow(dead_code)]
-    pub fn clear_context(&self, room_id: &str) -> Result<(), String> {
+    pub fn clear_context(&self, chat_id: &str) -> Result<(), String> {
         self.conn
             .execute(
-                "DELETE FROM conversations WHERE room_id = ?1",
-                params![room_id],
+                "DELETE FROM conversations WHERE chat_id = ?1",
+                params![chat_id],
             )
             .map_err(|e| format!("Clear failed: {}", e))?;
         Ok(())
     }
 
-    /// Prune old messages across all rooms to keep the database compact.
+    /// Prune old messages across all chats to keep the database compact.
     ///
     /// Removes messages older than `max_age_days`. This is a maintenance
     /// operation — run daily or on startup.

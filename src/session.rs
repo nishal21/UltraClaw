@@ -5,7 +5,7 @@
 // and evicts idle sessions to reclaim RAM.
 //
 // ARCHITECTURE:
-// Each Matrix room_id gets one Session when the first message arrives.
+// Each chat thread gets one Session when the first message arrives.
 // The session tracks metadata (platform, turn count, timestamps) that
 // helps the Soul tailor its behavior per-conversation.
 //
@@ -57,9 +57,9 @@ pub enum SessionState {
 pub struct Session {
     /// Unique session ID (UUID v4).
     pub session_id: String,
-    /// The Matrix room_id this session is bound to.
+    /// The generic chat_id this session is bound to.
     #[allow(dead_code)]
-    pub room_id: String,
+    pub chat_id: String,
     /// The platform detected from the room_id (WhatsApp, Discord, etc.)
     pub platform: Platform,
     /// Unix timestamp when the session was created.
@@ -79,7 +79,7 @@ pub struct Session {
 /// With Session at ~140 bytes and key at ~50 bytes: ~238 bytes per entry.
 /// Max 256 sessions = ~60KB. This is bounded and predictable.
 pub struct SessionManager {
-    /// Active sessions keyed by room_id.
+    /// Active sessions keyed by chat_id.
     sessions: HashMap<String, Session>,
     /// Session idle timeout in seconds.
     ttl_secs: u64,
@@ -97,20 +97,20 @@ impl SessionManager {
         }
     }
 
-    /// Get an existing session or create a new one for the given room.
+    /// Get an existing session or create a new one for the given chat.
     ///
     /// If the session cap is reached, the oldest idle session is evicted
     /// to make room (LRU eviction).
-    pub fn get_or_create(&mut self, room_id: &str, platform: Platform) -> &Session {
+    pub fn get_or_create(&mut self, chat_id: &str, platform: Platform) -> &Session {
         let now = chrono::Utc::now().timestamp();
 
         // If session exists, touch it and return
-        if self.sessions.contains_key(room_id) {
-            let session = self.sessions.get_mut(room_id).unwrap();
+        if self.sessions.contains_key(chat_id) {
+            let session = self.sessions.get_mut(chat_id).unwrap();
             session.last_active = now;
             session.turn_count += 1;
             session.state = SessionState::Active;
-            return self.sessions.get(room_id).unwrap();
+            return self.sessions.get(chat_id).unwrap();
         }
 
         // Evict if at capacity
@@ -121,7 +121,7 @@ impl SessionManager {
         // Create new session
         let session = Session {
             session_id: uuid::Uuid::new_v4().to_string(),
-            room_id: room_id.to_string(),
+            chat_id: chat_id.to_string(),
             platform,
             created_at: now,
             last_active: now,
@@ -129,14 +129,14 @@ impl SessionManager {
             state: SessionState::Active,
         };
 
-        self.sessions.insert(room_id.to_string(), session);
-        self.sessions.get(room_id).unwrap()
+        self.sessions.insert(chat_id.to_string(), session);
+        self.sessions.get(chat_id).unwrap()
     }
 
-    /// Update the last-active timestamp for a room's session.
+    /// Update the last-active timestamp for a chat's session.
     #[allow(dead_code)]
-    pub fn touch(&mut self, room_id: &str) {
-        if let Some(session) = self.sessions.get_mut(room_id) {
+    pub fn touch(&mut self, chat_id: &str) {
+        if let Some(session) = self.sessions.get_mut(chat_id) {
             session.last_active = chrono::Utc::now().timestamp();
             session.state = SessionState::Active;
         }
@@ -153,19 +153,19 @@ impl SessionManager {
         let now = chrono::Utc::now().timestamp();
         let ttl = self.ttl_secs as i64;
 
-        // Collect expired room_ids first to avoid borrowing issues.
+        // Collect expired chat_ids first to avoid borrowing issues.
         // This temporary Vec is at most `max_sessions` * ~50 bytes.
         let expired: Vec<String> = self
             .sessions
             .iter()
             .filter(|(_, session)| now - session.last_active > ttl)
-            .map(|(room_id, _)| room_id.clone())
+            .map(|(chat_id, _)| chat_id.clone())
             .collect();
 
         let count = expired.len();
-        for room_id in expired {
-            self.sessions.remove(&room_id);
-            // Memory freed: the Session struct + the room_id String key
+        for chat_id in expired {
+            self.sessions.remove(&chat_id);
+            // Memory freed: the Session struct + the chat_id String key
         }
 
         count
@@ -173,13 +173,13 @@ impl SessionManager {
 
     /// Evict the single oldest idle session to make room for a new one.
     fn evict_oldest(&mut self) {
-        if let Some(oldest_room) = self
+        if let Some(oldest_chat) = self
             .sessions
             .iter()
             .min_by_key(|(_, s)| s.last_active)
             .map(|(k, _)| k.clone())
         {
-            self.sessions.remove(&oldest_room);
+            self.sessions.remove(&oldest_chat);
         }
     }
 
@@ -187,8 +187,8 @@ impl SessionManager {
     ///
     /// Returns metadata like turn count and session duration, which helps
     /// the LLM understand the conversation's stage.
-    pub fn get_session_context(&self, room_id: &str) -> Option<String> {
-        self.sessions.get(room_id).map(|session| {
+    pub fn get_session_context(&self, chat_id: &str) -> Option<String> {
+        self.sessions.get(chat_id).map(|session| {
             let now = chrono::Utc::now().timestamp();
             let duration_mins = (now - session.created_at) / 60;
             format!(
@@ -201,10 +201,10 @@ impl SessionManager {
         })
     }
 
-    /// Get the session for a room, if it exists.
+    /// Get the session for a chat, if it exists.
     #[allow(dead_code)]
-    pub fn get(&self, room_id: &str) -> Option<&Session> {
-        self.sessions.get(room_id)
+    pub fn get(&self, chat_id: &str) -> Option<&Session> {
+        self.sessions.get(chat_id)
     }
 
     /// Get the total number of active sessions.

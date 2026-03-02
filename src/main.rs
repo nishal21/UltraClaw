@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_variables, unused_imports, unreachable_code, unexpected_cfgs)]
+
 // ============================================================================
 // ULTRACLAW — main.rs
 // ============================================================================
@@ -12,16 +14,16 @@
 // 6. Optionally connect to MCP servers for external tools
 // 7. Create the SessionManager for multi-turn conversation tracking
 // 8. Initialize the FailoverEngine (Cloud → Local LLM)
-// 9. Log into Matrix
+// 9. Initialize available standard connectors (CLI, Discord, Webhook, etc.)
 // 10. Spawn a background task for session expiration
-// 11. Enter the Matrix event loop (runs forever)
+// 11. Enter the event loop (runs forever)
 //
 // TOTAL MEMORY BUDGET AT STARTUP (before any conversations):
 // ┌────────────────────────────┬────────────┐
 // │ Component                  │ RAM Usage   │
 // ├────────────────────────────┼────────────┤
 // │ Tokio runtime + threads    │ ~2 MB       │
-// │ Matrix SDK client          │ ~1-2 MB     │
+// │ CLI / Webhook Connectors   │ ~1-2 MB     │
 // │ SQLite conv DB (page cache)│ ~2 MB       │
 // │ SQLite memory DB           │ ~2 MB       │
 // │ Soul (persona + directives)│ ~1 KB       │
@@ -54,16 +56,41 @@ mod config;
 mod db;
 mod formatter;
 mod inference;
-mod matrix;
+// mod matrix; // Moved to connectors/matrix.rs
 mod mcp;
 mod media;
 mod media_skill;
 mod memory;
 mod onboarding; // New module
+mod sandbox_skill;
+mod search_skill;
 mod session;
 mod skill;
 mod soul;
+mod swarm_skill;
+mod cron_skill;
 mod tools;
+mod cli;
+mod connector;
+mod connectors;
+mod voice_skill;
+mod browser_skill;
+mod smarthome_skill;
+mod system_nodes;
+mod auth;
+mod gateway;
+mod memory_vector;
+mod quota;
+mod rag_sop;
+mod robot_skill;
+mod security_landlock;
+mod skill_manager;
+mod wasm_plugin;
+mod git_resolver;
+mod openclaw_skills;
+mod tailscale_funnel;
+mod group_context;
+mod live_canvas;
 
 use crate::config::Config;
 use crate::db::ConversationDb;
@@ -110,6 +137,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("║          ULTRACLAW — AI Agent v0.1.0             ║");
     info!("║  Hyper-Optimized Multi-Platform Inference Engine  ║");
     info!("╚══════════════════════════════════════════════════╝");
+
+    // ========================================================================
+    // STEP 1.5: Security Kernel Sandbox (Landlock)
+    // ========================================================================
+    let mut landlock = crate::security_landlock::LandlockSecurity::new();
+    if let Err(e) = landlock.enforce() {
+        warn!("Linux Landlock sandboxing not available or failed: {}", e);
+    } else {
+        info!("Linux Landlock strict kernel sandboxing engaged.");
+    }
 
     // ========================================================================
     // STEP 2: Load configuration
@@ -237,7 +274,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("No media API keys configured — media skills disabled");
     }
 
+    for node_skill in crate::system_nodes::SystemNodesModule::register_all() {
+        skills.register(node_skill);
+    }
+    info!("System Node tools (camera, screen_record, etc.) registered");
+
     let skills = Arc::new(skills);
+
+    // ========================================================================
+    // STEP 5.5: Initialize Level 2 Conflict Resolver & OpenClaw Registry
+    // ========================================================================
+    let git_resolver = crate::git_resolver::SemanticGitResolver::new();
+    info!("NanoClaw Level 2 Semantic Git Conflict Resolution Engine active.");
+
+    let openclaw_registry = crate::openclaw_skills::OpenClawSkillRegistry::new();
+    info!("OpenClaw Hyper-Skill Module loaded with {} custom extensions.", openclaw_registry.list_extensions().len());
+
+    let _tailscale = crate::tailscale_funnel::TailscaleFunnel::new();
+    let _group_ctx = crate::group_context::GroupContextManager::new(std::path::PathBuf::from("/tmp/ultraclaw_groups"));
+    let _canvas = crate::live_canvas::LiveCanvasProtocol::new();
+    
+    let massive_channels_init = crate::connectors::massive_channels::MassiveChannelsInit::new();
+    massive_channels_init.initialize_all();
+
+    let api_gateway = crate::gateway::ApiGateway::new(3030);
+    api_gateway.start();
+
+    info!("Tailscale Funnel, Group Context, Live Canvas, API Gateway (port 3030), and Massive Channels initialized natively.");
 
     // ========================================================================
     // STEP 6: Connect to MCP servers (optional)
@@ -304,11 +367,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Local engine: llama.cpp with mmap'd GGUF model
-    // Note: The model is NOT loaded yet. It will be memory-mapped on first
-    // local inference call (lazy loading to avoid wasting RAM if cloud works).
-    let local = LocalEngine::new(&config.local_model_path);
+    // Attempt auto-discovery of local models if path is empty or default
+    let local_path = if config.local_model_path.is_empty() || config.local_model_path == "models/llama3-8b.gguf" {
+        // Search common model directories for any .gguf files
+        let common_dirs = vec!["models", ".", "../models", "/models", "C:/models"];
+        let mut found_path = config.local_model_path.clone();
+        for dir in common_dirs {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() && path.extension().map_or(false, |ext| ext == "gguf") {
+                        found_path = path.to_string_lossy().to_string();
+                        tracing::info!("Auto-discovered local model at: {}", found_path);
+                        break;
+                    }
+                }
+            }
+            if found_path != config.local_model_path && !found_path.is_empty() {
+                break;
+            }
+        }
+        found_path
+    } else {
+        config.local_model_path.clone()
+    };
+
+    let local = LocalEngine::new(&local_path);
     info!(
-        model_path = %config.local_model_path,
+        model_path = %local_path,
         "Local inference engine initialized (model will be mmap'd on first use)"
     );
 
@@ -318,17 +404,64 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Failover engine ready: Cloud → Local");
 
     // ========================================================================
-    // STEP 9: Log into Matrix
+    // STEP 9: Initialize Connectors
     // ========================================================================
-    let client = matrix::login(&config)
-        .await
-        .expect("Matrix login failed — check ULTRACLAW_HOMESERVER_URL, _MATRIX_USER, _MATRIX_PASSWORD");
+    // Ultraclaw supports running multiple connectors simultaneously (Matrix, CLI, etc.)
+    // We determine which ones to run based on args and config.
+    use crate::connector::Connector;
+
+    let mut connectors: Vec<Box<dyn Connector>> = Vec::new();
+
+    // Check for CLI mode flag argument
+    if args.contains(&"--cli".to_string()) {
+        info!("CLI mode enabled via flag");
+        connectors.push(Box::new(cli::CliConnector::new()));
+    } else {
+    // No default connector inserted here because Matrix was removed by user request.
+    }
+
+    // --- Discord Connector ---
+    #[cfg(feature = "discord")]
+    {
+        if config.discord_token.is_some() {
+            info!("Discord connector enabled via config");
+            connectors.push(Box::new(connectors::discord::DiscordConnector::new()));
+        }
+    }
+
+    // --- Telegram Connector ---
+    #[cfg(feature = "telegram")]
+    {
+        if config.telegram_token.is_some() {
+            info!("Telegram connector enabled via config");
+            connectors.push(Box::new(connectors::telegram::TelegramConnector::new()));
+        }
+    }
+
+    // --- Webhook Connector ---
+    #[cfg(feature = "webhook")]
+    {
+        info!("Webhook connector enabled");
+        connectors.push(Box::new(connectors::webhook::WebhookConnector::new()));
+    }
+
+    // Default fallback: If NO connectors are enabled, prompt user or enable Matrix?
+    // For now, if list is empty, enable Matrix as default unless --cli was passed?
+    // Logic refinement:
+    if connectors.is_empty() && !args.contains(&"--cli".to_string()) {
+         info!("No connectors enabled. Defaulting to CLI.");
+         connectors.push(Box::new(cli::CliConnector::new()));
+    }
+
+    if connectors.is_empty() {
+        warn!("No connectors enabled! Exiting.");
+        return Ok(());
+    }
 
     // ========================================================================
     // STEP 10: Spawn background maintenance tasks
     // ========================================================================
     // Session expiration sweep — runs every 60 seconds.
-    // Uses a tokio interval (timer wheel entry, zero-cost when not firing).
     {
         let sessions = sessions.clone();
         tokio::spawn(async move {
@@ -345,23 +478,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // ========================================================================
-    // STEP 11: Enter the Matrix event loop (runs forever)
+    // STEP 11: Run Connectors
     // ========================================================================
-    info!("Entering Matrix event loop — Ultraclaw is now live!");
-    info!("Listening for messages across all bridged platforms...");
+    info!("Starting {} connector(s)...", connectors.len());
 
-    matrix::run_event_loop(
-        client,
-        engine,
-        conv_db,
-        memory_store,
-        sessions,
-        soul,
-        skills,
-        mcp_client,
-        config,
-    )
-    .await;
+    // Spawn a task for each connector
+    let mut handles = Vec::new();
+
+    for connector in connectors {
+        let engine = engine.clone();
+        let db = conv_db.clone();
+        let memory = memory_store.clone();
+        let sessions = sessions.clone();
+        let soul = soul.clone();
+        let skills = skills.clone();
+        let mcp = mcp_client.clone();
+        let config = config.clone();
+
+        let name = connector.name().to_string();
+        info!(connector = %name, "Launching connector");
+
+        handles.push(tokio::spawn(async move {
+            if let Err(e) = connector.run(engine, db, memory, sessions, soul, skills, mcp, config).await {
+                error!(connector = %name, error = %e, "Connector failed");
+            }
+        }));
+    }
+
+    // Wait for all connectors (they usually run forever)
+    for handle in handles {
+        let _ = handle.await;
+    }
 
     Ok(())
 }

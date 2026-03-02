@@ -1,5 +1,5 @@
 use crate::config::Config;
-use dialoguer::{theme::ColorfulTheme, Input, Password, Select, Confirm};
+use dialoguer::{theme::ColorfulTheme, Input, Password, Select};
 use std::io::Result;
 
 /// Run the interactive onboarding wizard to generate a config.json file.
@@ -14,7 +14,7 @@ pub fn run_wizard() -> Result<()> {
 
     loop {
         let choices = vec![
-            "Configure Chat Platform (Matrix)",
+            "Configure Chat Platform (Discord/Telegram)",
             "Configure AI Brain (LLM)",
             "Configure Media Providers",
             "Save & Exit"
@@ -28,7 +28,7 @@ pub fn run_wizard() -> Result<()> {
             .map_err(map_err)?;
 
         match selection {
-            0 => configure_matrix(&mut config, &theme)?,
+            0 => configure_chat_platform(&mut config, &theme)?,
             1 => configure_llm(&mut config, &theme)?,
             2 => configure_media(&mut config, &theme)?,
             3 => break,
@@ -50,34 +50,10 @@ fn map_err(e: dialoguer::Error) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, format!("Dialoguer error: {}", e))
 }
 
-fn configure_matrix(config: &mut Config, theme: &ColorfulTheme) -> Result<()> {
-    println!("\n--- Matrix Configuration ---");
-    config.homeserver_url = Input::with_theme(theme)
-        .with_prompt("Matrix Homeserver URL")
-        .default(if config.homeserver_url.is_empty() { "https://matrix.org".to_string() } else { config.homeserver_url.clone() })
-        .interact_text().map_err(map_err)?;
-
-    config.matrix_user = Input::with_theme(theme)
-        .with_prompt("Matrix Username (e.g. @user:matrix.org)")
-        .default(config.matrix_user.clone())
-        .interact_text().map_err(map_err)?;
-
-    // Password handling: only ask if empty or explicitly requested
-    if config.matrix_password.is_empty() {
-        config.matrix_password = Password::with_theme(theme)
-            .with_prompt("Matrix Password")
-            .interact().map_err(map_err)?;
-    } else {
-        if Confirm::with_theme(theme)
-            .with_prompt("Update Matrix Password?")
-            .default(false)
-            .interact().map_err(map_err)?
-        {
-            config.matrix_password = Password::with_theme(theme)
-                .with_prompt("New Password")
-                .interact().map_err(map_err)?;
-        }
-    }
+fn configure_chat_platform(_config: &mut Config, _theme: &ColorfulTheme) -> Result<()> {
+    println!("\n--- Chat Platform Configuration ---");
+    println!("Matrix support has been removed per user instructions.");
+    println!("Please configure Discord, Telegram, or Webhooks via environment variables or config.json directly.");
     Ok(())
 }
 

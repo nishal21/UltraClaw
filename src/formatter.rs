@@ -12,14 +12,10 @@
 // - LINE/Zalo: basic text with some formatting
 //
 // ARCHITECTURE:
-// The formatter inspects the Matrix room_id to detect which bridge the
-// message came through. Matrix bridges use predictable room_id patterns:
-// - mautrix-whatsapp: `!xxx:whatsapp.example.com` or rooms with alias `#whatsapp_...`
-// - mautrix-telegram: `!xxx:telegram.example.com` or `#telegram_...`
-// - mautrix-discord: `!xxx:discord.example.com` or `#discord_...`
+// The formatter inspects the chat_id to detect the platform.
 //
-// In practice, the server_name portion of the room_id or the room alias
-// suffix identifies the bridge. This module uses heuristic matching.
+// In practice, the prefix or suffix identifies the connector. 
+// This module uses heuristic matching.
 //
 // MEMORY OPTIMIZATION:
 // - Platform is a fieldless enum: 1 byte total.
@@ -65,8 +61,6 @@ pub enum Platform {
     Irc,
     /// Email (full HTML/markdown)
     Email,
-    /// Native Matrix (full markdown + HTML)
-    Matrix,
     /// Unknown platform — default to safe plain text
     #[allow(dead_code)]
     Unknown,
@@ -95,7 +89,6 @@ impl Platform {
             Platform::WeChat => 4000,    // WeChat limit
             Platform::Irc => 500,        // IRC is per-line, keep it short
             Platform::Email => 50000,    // Email has no practical limit
-            Platform::Matrix => 16000,   // Matrix's default limit
             Platform::Unknown => 2000,   // Conservative default
         }
     }
@@ -104,7 +97,7 @@ impl Platform {
     pub fn supports_markdown(&self) -> bool {
         matches!(
             self,
-            Platform::Discord | Platform::Slack | Platform::Matrix | Platform::Email
+            Platform::Discord | Platform::Slack | Platform::Email
         )
     }
 
@@ -112,27 +105,22 @@ impl Platform {
     pub fn supports_code_blocks(&self) -> bool {
         matches!(
             self,
-            Platform::Discord | Platform::Slack | Platform::Telegram | Platform::Matrix
+            Platform::Discord | Platform::Slack | Platform::Telegram
         )
     }
 }
 
-/// Detect the platform from a Matrix room_id.
+/// Detect the platform from a chat_id.
 ///
-/// Matrix room IDs follow the format: `!opaque_id:server_name`
-/// Bridges typically use identifiable server names or create rooms
-/// with predictable alias patterns.
-///
-/// This is a heuristic — in production, you'd also check the room's
-/// `m.bridge` state event for definitive bridge identification.
+/// This is a heuristic matching function.
 ///
 /// # Examples
-/// - `!abc123:whatsapp.myserver.com` → WhatsApp
-/// - `!abc123:telegram.myserver.com` → Telegram
-/// - `!abc123:discord.myserver.com` → Discord
-pub fn detect_platform(room_id: &str) -> Platform {
-    // Extract the server_name portion after the colon
-    let lower = room_id.to_lowercase();
+/// - `whatsapp_1234` → WhatsApp
+/// - `telegram_1234` → Telegram
+/// - `discord_1234` → Discord
+pub fn detect_platform(chat_id: &str) -> Platform {
+    // Extract the platform name chunk
+    let lower = chat_id.to_lowercase();
 
     if lower.contains("whatsapp") {
         Platform::WhatsApp
@@ -163,8 +151,8 @@ pub fn detect_platform(room_id: &str) -> Platform {
     } else if lower.contains("sms") || lower.contains("gsm") {
         Platform::Sms
     } else {
-        // Default: assume native Matrix client
-        Platform::Matrix
+        // Default
+        Platform::Unknown
     }
 }
 
@@ -321,11 +309,10 @@ fn strip_all_markdown(text: &str) -> String {
     result
 }
 
-/// Strip HTML tags from Matrix rich-text messages.
+/// Strip HTML tags from rich-text messages.
 ///
-/// Matrix messages may contain `formatted_body` with HTML. We need to
-/// extract just the text content. This is a simple tag stripper, not
-/// a full HTML parser — sufficient for Matrix room messages.
+/// We need to extract just the text content. This is a simple tag stripper, not
+/// a full HTML parser.
 pub fn strip_html(html: &str) -> String {
     let mut result = String::with_capacity(html.len());
     let mut in_tag = false;

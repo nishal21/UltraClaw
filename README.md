@@ -1,262 +1,174 @@
-# Ultraclaw 🦀
+<div align="center">
+  <img src="logo.png" alt="Ultraclaw Logo" width="150" />
+  
+  # Ultraclaw 🦀
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Rust](https://img.shields.io/badge/rust-stable-orange.svg)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
-![Matrix](https://img.shields.io/badge/matrix-protocol-green.svg)
+  **The Ultimate Autonomous AI Agent Framework**
 
-**Ultraclaw** is a hyper-optimized, multimodal autonomous AI agent built in Rust. It bridges the gap between local high-performance inference and cloud-based creativity, living natively on the [Matrix](https://matrix.org/) network.
+  <p>
+    <a href="https://nishal21.github.io/Ultraclaw/"><img src="https://img.shields.io/badge/Official_Website-Ultraclaw.io-00f0ff?style=for-the-badge&logo=vercel&logoColor=black" alt="Website" /></a>
+    <a href="https://github.com/nishal21/Ultraclaw/actions"><img src="https://img.shields.io/badge/build-passing-success?style=for-the-badge&logo=githubactions" alt="Build Status" /></a>
+    <a href="https://github.com/nishal21/Ultraclaw/releases/latest"><img src="https://img.shields.io/badge/version-v1.0.0-blue?style=for-the-badge&logo=github" alt="Version" /></a>
+    <img src="https://img.shields.io/badge/rust-stable-orange?style=for-the-badge&logo=rust" alt="Rust Version" />
+    <img src="https://img.shields.io/badge/platform-Win%20%7C%20Mac%20%7C%20Linux%20%7C%20Android-d4d4d4?style=for-the-badge" alt="Platforms" />
+  </p>
+
+  *A hyper-optimized, zero-overhead multimodal autonomous AI agent written in natively compiled Rust. Seamlessly bridging local execution, cloud intelligence, and absolutely secure OS sandboxing.*
+</div>
+
+---
+
+## 🚀 Why Ultraclaw?
+
+Ultraclaw is not just another wrapper script. It is a compiled, lightning-fast native binary that lives at the OS layer. It replaces fragile Python setups with a **Zero-Overhead** Rust execution context.
+
+<table>
+  <tr>
+    <td width="33%">
+      <h3>🛡️ Absolute Sandboxing</h3>
+      <p>Native Linux Landlock and ephemeral Alpine Docker containers prevent agents from harming the host filesystem. Execute any command securely.</p>
+    </td>
+    <td width="33%">
+      <h3>🧠 Multimodal Engine</h3>
+      <p>Direct integration with 15+ Image and Video AI providers (DALL-E, Stability, Veo, Luma) routing strictly via dynamic API keys.</p>
+    </td>
+    <td width="33%">
+      <h3>⚡ Triple Threat UI</h3>
+      <p>Shipped natively with a keyboard-driven Rust TUI, a completely native Desktop wrapper (Tauri), and a gorgeous React Web Canvas.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="33%">
+      <h3>🌐 Omnichannel Presence</h3>
+      <p>Natively bridges 18+ platforms including Slack, Discord, Telegram, Teams, and standard Webhooks concurrently. One brain, everywhere.</p>
+    </td>
+    <td width="33%">
+      <h3>🤖 Advanced Agent Swarms</h3>
+      <p>Deploy unlimited sub-agents simultaneously. Hand off massive tasks to Nano-Git resolving swarms while you continue discussing architecture.</p>
+    </td>
+    <td width="33%">
+      <h3>🎙️ Omni-Voice Processing</h3>
+      <p>Directly bind to hardware microphones using built-in Whisper engines. Speak to your cloud infrastructure naturally.</p>
+    </td>
+  </tr>
+</table>
 
 ---
 
 ## 🏗️ System Architecture
 
-Ultraclaw functions as a highly modular "Brain" that connects to the world via the Matrix protocol. Its core is an async event loop that processes messages, manages state, and dispatches tasks to specialized engines.
+Ultraclaw functions as a highly modular "Brain". Its core is an async event loop that processes messages via `tokio`, manages contextual state, and intelligently routes over **80 built-in skills**.
 
 ```mermaid
 graph TD
-    User((User)) <-->|Matrix Protocol| Matrix[Matrix Client]
+    User((User)) <-->|API / UI / Desktop| Connector[Native Axum Gateway / CLI]
     
-    subgraph "Ultraclaw Core"
-        Matrix <--> EventLoop[Event Loop]
-        EventLoop <--> SessionMgr[Session Manager]
-        EventLoop <--> Memory[Long-Term Memory DB]
+    subgraph "Ultraclaw Singularity"
+        Connector <--> EventLoop[Tokio Async Event Loop]
+        EventLoop <--> SessionMgr[In-Memory Session Manager]
         
-        EventLoop --> Router{Capability Router}
+        EventLoop --> Router{Capability Matrix}
         
-        Router -->|Text Processing| Inference[Inference Engine]
-        Router -->|Image/Video Gen| Media[Media Engine]
-        Router -->|System Actions| Skills[Skill Registry]
+        Router -->|Language| Inference[Failover Inference Engine]
+        Router -->|Vision/Video| Media[Multimodal Gen Engine]
+        Router -->|OS & Tools| Skills[80+ Skill Registry]
         
         subgraph "Inference Engine"
-            Cloud["Cloud LLM (GPT-4o)"]
-            Local["Local LLM (Llama 3)"]
-            Cloud -.->|Failover| Local
+            Cloud["Cloud LLM (GPT-4o / Claude)"]
+            Local["Local LLM (Llama 3 GGUF)"]
+            Cloud -.->|Self-Healing Failover| Local
         end
         
-        subgraph "Media Engine"
-            DALL["DALL-E 3"]
-            Stable["Stability AI"]
-            Runway["Runway ML"]
-            Veo["Google Veo"]
+        subgraph "Sandboxed Execution"
+            Cmd["Ephemeral Alpine Docker"]
+            FS["Virtual Filesystem"]
+            Linux["Kernel Landlock Rules"]
         end
-        
-        subgraph "Skills"
-            FS["File System"]
-            Cmd["Command Exec"]
-            Browser["Web Browser"]
-            MCP["MCP Tools"]
-        end
+        Skills --> Cmd
+        Skills --> FS
     end
-```
-
-### 🌊 Message Flow: From User to Agent
-
-How Ultraclaw processes a single message:
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Matrix
-    participant Core
-    participant Inference
-    participant Media
-    
-    User->>Matrix: "Draw a futuristic city"
-    Matrix->>Core: New Message Event
-    Core->>Core: Check Session & Memory
-    Core->>Inference: Analyze Intent
-    Inference-->>Core: Tool Call: generate_image("futuristic city")
-    Core->>Media: Request Generation
-    Media->>Media: Select Provider (e.g., DALL-E 3)
-    Media-->>Core: Return Image URL/Bytes
-    Core->>Matrix: Upload Image & Reply
-    Matrix-->>User: [Image Displayed]
 ```
 
 ---
 
-## 🛠️ Installation Guide
+## 🛠️ Instant Installation
 
-Follow these steps to get Ultraclaw running on your machine.
+Follow these zero-overhead steps to get the Agent Singularity running natively on your hardware.
 
-### Prerequisites
+### Universal Dependencies
 
-| OS | Requirement | Command to Install |
-|---|---|---|
-| **All** | **Rust** (Stable) | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` |
-| **All** | **Git** | [Download Git](https://git-scm.com/downloads) |
-| **Windows** | **C++ Build Tools** | Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) |
-| **Linux (Ubuntu/Debian)** | **Build Essentials** | `sudo apt install build-essential libssl-dev pkg-config libsqlite3-dev` |
-| **macOS** | **Xcode Command Line Tools** | `xcode-select --install` |
+| Component | Installation Command |
+| :--- | :--- |
+| **Rust Toolchain** | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` |
+| **System Libs (Ubuntu)** | `sudo apt install build-essential libssl-dev pkg-config` |
+| **Node.js (For UI)** | `npm i -g npm@latest` |
 
-### Step 1: Clone the Repository
+### 1. Clone & Core Compile
+
+Compiling with `--release` enables LTO (Link-Time Optimization) and heavily strips debug symbols for maximum performance.
+
 ```bash
 git clone https://github.com/nishal21/Ultraclaw.git
 cd Ultraclaw
-```
-
-### Step 2: Compile the Binary
-Running in release mode ensures maximum performance.
-```bash
 cargo build --release
 ```
-*   The first build may take a few minutes as it downloads dependencies.
-*   The binary will be located at:
-    *   **Windows**: `target\release\ultraclaw.exe`
-    *   **Linux/macOS**: `target/release/ultraclaw`
 
-### Step 3: Run the Onboarding Wizard
-We've built an interactive setup tool to make configuration easy.
+### 2. Multi-UI Execution
+
+Choose how you want to interact with your Agent perfectly suited to your workflow.
 
 ```bash
-cargo run -- --init
-```
+# Option A: Start the stunning lightweight Terminal Interface (TUI)
+cargo run --release -- --tui
 
-This wizard will guide you through:
-1.  **Matrix Setup**: Enter your Homeserver URL (e.g., `https://matrix.org`), Username, and Password.
-2.  **LLM Selection**: Choose **Cloud** (OpenAI/Anthropic) or **Local** (Ollama/LocalAI).
-3.  **Media Setup**: Enter API keys for services like Stability AI, Runway, Google Veo, etc.
-
-Configuration is saved to `config.json` in the current directory.
-
-Configuration is saved to `config.json` in the current directory.
-
----
-
-## 🎮 Usage & Functionality
-
-Ultraclaw is a **Natural Language Agent**. You don't run commands; you just talk to it.
-
-### Core Capabilities
-*   **Chat**: "Who are you?", "Explain quantum physics."
-*   **Memory**: "Remember that I like Python.", "What did I tell you about my preferences?"
-*   **System Tools**:
-    *   "List files in the current directory."
-    *   "Read the contents of README.md."
-    *   "Run `echo hello` in the shell." (Requires confirmation)
-
-### 🎨 Media Generation
-Just ask for what you want. Ultraclaw intelligently selects the best provider.
-
-*   **Image**: "Generate a cyberpunk street scene." (Uses DALL-E 3, Stability, or Fal)
-*   **Video**: "Create a 5-second video of a drone flying over a mountain." (Uses Runway, Veo, or Luma)
-
-### CLI Commands
-*   `cargo run -- --init`: Launch the interactive setup wizard.
-*   `cargo run`: Start the agent normally.
-
----
-
-## ⚙️ Configuration Reference
-
-Ultraclaw uses a hierarchy for configuration:
-`Env Vars` > `config.json` > `.env file` > `Defaults`
-
-| Category | Variable | Description | Default |
-|---|---|---|---|
-| **Matrix** | `ULTRACLAW_HOMESERVER_URL` | URL of your Matrix server | `https://matrix.org` |
-| | `ULTRACLAW_MATRIX_USER` | Your full user ID | e.g. `@bot:matrix.org` |
-| | `ULTRACLAW_MATRIX_PASSWORD` | Your login password | - |
-| **Cloud AI** | `ULTRACLAW_CLOUD_API_KEY` | Key for OpenAI/Anthropic/etc | - |
-| | `ULTRACLAW_CLOUD_MODEL` | Model ID to use | `gpt-4o-mini` |
-| **Local AI** | `ULTRACLAW_CLOUD_BASE_URL` | Base URL for local inference | `http://localhost:11434/v1` |
-| | `ULTRACLAW_CLOUD_MODEL` | Local model name | `llama3` |
-| **Media** | `ULTRACLAW_STABILITY_API_KEY` | Stability AI Key | - |
-| | `ULTRACLAW_RUNWAY_API_KEY` | Runway ML Key | - |
-| | `ULTRACLAW_VEO_API_KEY` | Google Key (VideoFX) | - |
-| | ...and many more | See `.env.example` | - |
-
----
-
-## 🖼️ Media Pipeline
-
-Ultraclaw supports **15+ generation providers**. It automatically routes requests based on your configured API keys and preferred provider settings.
-
-```mermaid
-graph LR
-    Input["Prompt: 'A cat in space'"] --> Router{Media Router}
-    
-    subgraph "Image Providers"
-        Router -->|Prefer: DALL-E| OpenAI[OpenAI DALL-E 3]
-        Router -->|Prefer: Stability| SD[Stability Core]
-        Router -->|Prefer: Fal| Fal[Fal.ai Flux]
-    end
-    
-    subgraph "Video Providers"
-        Router -->|Prefer: Runway| Run[Runway Gen-3]
-        Router -->|Prefer: Luma| Luma[Luma Ray 2]
-        Router -->|Prefer: Veo| Goog[Google Veo]
-    end
-    
-    OpenAI --> Output[Media File]
-    SD --> Output
-    Fal --> Output
-    Run --> Output
-    Output --> Upload[Matrix Upload]
+# Option B: Boot the Local API Gateway & visually rich React Canvas UI
+cargo run --release &
+cd docs && npm install && npm run dev
 ```
 
 ---
 
-## 🔗 Integrations (WhatsApp, Discord, etc.)
+## ⚙️ Universal Global Configuration
 
-Ultraclaw uses **Matrix Bridges** to talk to other apps. It sees everything as a Matrix room.
+Configuration is hierarchal: `Environment Values` > `config.json` > `.env file`. We support **any LLM provider globally** out of the box.
 
-### Method 1: Using a Hosted Provider (Easiest)
-Use a service like **Beeper** or **Element One** to manage the bridges for you.
+```env
+# -----------------------------
+# CORE INFERENCE ENGINE
+# -----------------------------
+ULTRACLAW_CLOUD_API_KEY=sk-xxxx
+ULTRACLAW_CLOUD_MODEL=gpt-4o
+ULTRACLAW_CLOUD_BASE_URL=https://api.openai.com/v1
 
-1.  **Sign Up**: Create an account on [Beeper.com](https://www.beeper.com/) or similar.
-2.  **Connect Networks**: In the Beeper app, connect your WhatsApp, Discord, Telegram, etc.
-3.  **Get Credentials**:
-    *   You need your Matrix username (e.g., `@user:beeper.com`) and an **Access Token** (or password).
-    *   *Tip: Use a dedicated "bot" account if possible, or log Ultraclaw in as you.*
-4.  **Configure Ultraclaw**:
-    ```bash
-    cargo run -- --init
-    ```
-    *   **Homeserver**: `https://matrix.beeper.com` (or your provider's URL)
-    *   **Username**: `@your_username:beeper.com`
-    *   **Password/Token**: Your login credentials.
+# Local Testing overrides:
+# ULTRACLAW_CLOUD_BASE_URL=http://localhost:11434/v1
+# ULTRACLAW_CLOUD_MODEL=llama3
 
-Ultraclaw will now see every chat in your Beeper inbox and can reply to them!
+# -----------------------------
+# PLATFORM BRIDGES
+# -----------------------------
+ULTRACLAW_DISCORD_TOKEN=your_bot_token_here
+ULTRACLAW_TELEGRAM_TOKEN=your_bot_token_here
 
-### Method 2: Self-Hosted (Advanced)
-If you run your own Matrix server (Synapse), you must install the bridges yourself.
-
-1.  **Install Synapse**: Follow the [Matrix Synapse Guide](https://matrix-org.github.io/synapse/latest/setup/installation.html).
-2.  **Install Bridges**:
-    *   **WhatsApp**: [`mautrix-whatsapp`](https://github.com/mautrix/whatsapp) - `go install go.mau.fi/mautrix-whatsapp`
-    *   **Discord**: [`mautrix-discord`](https://github.com/mautrix/discord)
-3.  **Configure Bridge**:
-    *   Edit `config.yaml` for the bridge.
-    *   Generate `registration.yaml`.
-    *   Add registration to Synapse's `homeserver.yaml`.
-    *   Restart Synapse.
-4.  **Log In**:
-    *   Start a chat with the bridge bot (e.g., `@whatsappbot:yourserver.com`).
-    *   Scan the QR code to link your WhatsApp.
-5.  **Connect Ultraclaw**: Point Ultraclaw to your local homeserver (`http://localhost:8008`).
-
-Once bridged, Ultraclaw treats the bridged chats exactly like native Matrix rooms.
+# -----------------------------
+# MULTIMODAL GENERATION 
+# -----------------------------
+ULTRACLAW_STABILITY_API_KEY=sk-xxxx
+ULTRACLAW_RUNWAY_API_KEY=sk-xxxx
+```
 
 ---
 
-## 🤝 Contributing
+## 🖥️ Continuous Integration / Matrix
 
-We welcome contributions! Please check [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+This repository natively builds binaries for **Windows, macOS, Linux, and Android APKs** using GitHub Actions upon every single push to the `main` branch. 
 
-1.  Fork the repo.
-2.  Create a feature branch (`git checkout -b feature/amazing-feature`).
-3.  Commit your changes (`git commit -m 'Add amazing feature'`).
-4.  Push to the branch (`git push origin feature/amazing-feature`).
-5.  Open a Pull Request.
+Check the [Downloads Hub](https://nishal21.github.io/Ultraclaw/downloads) or the [Releases](https://github.com/nishal21/Ultraclaw/releases) tab for pre-compiled payloads, including the native `.apk` to run Swarms directly from your phone.
 
 ---
 
-## 📄 License
+<div align="center">
+  <h3>Built with 🦀 and ❤️ by Nishal</h3>
+  <p>Available completely Open-Source under the MIT Protocol.</p>
+</div>
 
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-Built with 🦀 and ❤️ by **Nishal**.
