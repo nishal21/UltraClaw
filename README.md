@@ -10,7 +10,7 @@
     <a href="https://github.com/nishal21/Ultraclaw/actions"><img src="https://img.shields.io/badge/build-passing-success?style=for-the-badge&logo=githubactions" alt="Build Status" /></a>
     <a href="https://github.com/nishal21/Ultraclaw/releases/latest"><img src="https://img.shields.io/badge/version-v1.0.0-blue?style=for-the-badge&logo=github" alt="Version" /></a>
     <img src="https://img.shields.io/badge/rust-stable-orange?style=for-the-badge&logo=rust" alt="Rust Version" />
-    <img src="https://img.shields.io/badge/platform-Win%20%7C%20Mac%20%7C%20Linux%20%7C%20Android-d4d4d4?style=for-the-badge" alt="Platforms" />
+    <img src="https://img.shields.io/badge/platform-Win%20%7C%20Mac%20%7C%20Linux%20%7C%20-d4d4d4?style=for-the-badge" alt="Platforms" />
   </p>
 
   *A hyper-optimized, zero-overhead multimodal autonomous AI agent written in natively compiled Rust. Seamlessly bridging local execution, cloud intelligence, and absolutely secure OS sandboxing.*
