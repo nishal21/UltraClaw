@@ -54,7 +54,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: './ui'
-          tauriScript: 'npx tauri'
 
       - name: Upload macOS Artifacts (DMG)
         if: matrix.platform == 'macos-latest'
@@ -106,7 +105,7 @@ jobs:
       - name: Install Frontend
         run: cd ui && npm install
       - name: Build Android APK
-        run: cd ui && npx tauri android init && npx tauri android build
+        run: cd ui && npm run tauri android init && npm run tauri android build
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

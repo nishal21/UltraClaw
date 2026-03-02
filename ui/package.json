@@ -6,7 +6,8 @@
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@lit-labs/signals": "^0.2.0",
