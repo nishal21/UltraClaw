@@ -37,7 +37,7 @@ export default function App() {
   return (
     <HelmetProvider>
       {/* The basename string must match exactly your repo name on github pages */}
-      <Router basename="/Ultraclaw">
+      <Router basename="/UltraClaw">
         <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-indigo-500/30">
           <Navbar />
           <main className="pt-24 min-h-screen">
