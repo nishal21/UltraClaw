@@ -16,11 +16,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - uses: dtolnay/rust-toolchain@stable
       - name: Build TUI Binary
         run: cargo build --release
       - name: Upload TUI Artifact
@@ -58,6 +54,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: './ui'
+          tauriScript: 'npx tauri'
 
   build-android-apk:
     name: Build Android APK (Tauri Mobile)
@@ -80,10 +77,10 @@ jobs:
           java-version: '17'
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-      - name: Install frontend dependencies
+      - name: Install Frontend
         run: cd ui && npm install
       - name: Build Android APK
-        run: cd ui && npx tauri android build
+        run: cd ui && npx tauri android init && npx tauri android build
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
