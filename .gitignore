@@ -9,4 +9,8 @@ ultraclaw.db
 ultraclaw.db.memory
 media_output/
 .agent/
+node_modules/
+ui/node_modules/
+ui/dist/
+ui/src-tauri/target/
 
